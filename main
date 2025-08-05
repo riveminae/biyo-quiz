@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【重低音SE】脳揺れ美容クイズ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Web音響合成ライブラリ Tone.js を読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        :root {
+            --bg-color: #110f1a;
+            --primary-glow: #ff00ff;
+            --secondary-glow: #00ffff;
+            --text-color: #f0f0f0;
+            --card-bg: rgba(22, 18, 38, 0.85);
+        }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+            background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid var(--primary-glow);
+            box-shadow: 0 0 15px var(--primary-glow), 0 0 30px var(--primary-glow) inset;
+            animation: pulse-border 3s infinite;
+        }
+
+        .btn-difficulty, .btn-answer {
+            cursor: pointer;
+        }
+
+        .btn-difficulty {
+            position: relative;
+            border: 2px solid;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 5px currentColor;
+        }
+        .btn-difficulty:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            box-shadow: 0 0 15px 5px currentColor;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .btn-difficulty:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .btn-difficulty:hover:before {
+            opacity: 1;
+        }
+
+        .btn-answer {
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1));
+            border: 2px solid var(--secondary-glow);
+            box-shadow: 0 0 8px var(--secondary-glow) inset;
+            transition: all 0.2s ease;
+        }
+        .btn-answer:not(.disabled):hover {
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3));
+            transform: scale(1.02);
+            box-shadow: 0 0 12px var(--secondary-glow);
+        }
+
+        .correct {
+            animation: flash-correct 0.8s forwards;
+        }
+        .incorrect {
+            animation: flash-incorrect 0.8s forwards;
+        }
+        .disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        #timer-bar {
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px #facc15, 0 0 20px #facc15;
+        }
+
+        .text-glow-primary { text-shadow: 0 0 8px var(--primary-glow), 0 0 10px var(--primary-glow); }
+        .text-glow-secondary { text-shadow: 0 0 8px var(--secondary-glow), 0 0 10px var(--secondary-glow); }
+        .text-glow-correct { text-shadow: 0 0 10px #4ade80, 0 0 20px #4ade80; }
+        .text-glow-incorrect { text-shadow: 0 0 10px #f87171, 0 0 20px #f87171; }
+        .text-glow-gold { text-shadow: 0 0 10px #f59e0b, 0 0 20px #f59e0b; }
+
+        /* Animations */
+        @keyframes pulse-border {
+            0%, 100% { border-color: var(--primary-glow); box-shadow: 0 0 15px var(--primary-glow), 0 0 30px var(--primary-glow) inset; }
+            50% { border-color: var(--secondary-glow); box-shadow: 0 0 15px var(--secondary-glow), 0 0 30px var(--secondary-glow) inset; }
+        }
+        @keyframes screen-shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        @keyframes flash-correct {
+            0% { background-color: transparent; border-color: #4ade80; }
+            50% { background-color: rgba(74, 222, 128, 0.5); box-shadow: 0 0 25px #4ade80; transform: scale(1.05); }
+            100% { background-color: rgba(74, 222, 128, 0.3); border-color: #4ade80; }
+        }
+        @keyframes flash-incorrect {
+            0% { background-color: transparent; border-color: #f87171; }
+            50% { background-color: rgba(248, 113, 113, 0.5); box-shadow: 0 0 25px #f87171; transform: scale(0.98); }
+            100% { background-color: rgba(248, 113, 113, 0.3); border-color: #f87171; }
+        }
+        @keyframes text-pop-in {
+            0% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fade-in-dramatic {
+             0% { opacity: 0; filter: blur(10px); transform: translateY(20px); }
+             100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+        }
+        .animate-shake { animation: screen-shake 0.5s; }
+        .animate-pop-in { animation: text-pop-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+        .animate-fade-in { animation: fade-in-dramatic 0.8s ease-out; }
+
+        /* Confetti */
+        .confetti {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background: var(--primary-glow);
+            top: -50px;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div id="confetti-container" class="confetti"></div>
+    <div id="main-container" class="w-full max-w-3xl mx-auto">
+
+        <!-- 難易度選択画面 -->
+        <div id="difficulty-selection" class="card rounded-2xl p-8 shadow-2xl animate-fade-in">
+            <h1 class="text-4xl font-orbitron text-center text-glow-primary mb-2">BEAUTY ROYALE</h1>
+            <p class="text-center text-gray-400 mb-8">己の知識の価値を証明せよ</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <button onclick="startGame('easy')" class="btn-difficulty border-green-400 text-green-400 font-bold py-4 px-6 rounded-lg"><span class="text-xl">安全地帯</span><br><span class="text-sm">リスクなき知識に価値はない</span></button>
+                <button onclick="startGame('normal')" class="btn-difficulty border-blue-400 text-blue-400 font-bold py-4 px-6 rounded-lg"><span class="text-xl">運命の分かれ道</span><br><span class="text-sm">凡人か、非凡か</span></button>
+                <button onclick="startGame('hard')" class="btn-difficulty border-purple-500 text-purple-500 font-bold py-4 px-6 rounded-lg"><span class="text-xl">修羅の道</span><br><span class="text-sm">WARNING: 知識人の墓場</span></button>
+                <button onclick="startGame('professional')" class="btn-difficulty border-red-500 text-red-500 font-bold py-4 px-6 rounded-lg"><span class="text-xl">神々の領域</span><br><span class="text-sm">選ばれし者のみ許される挑戦</span></button>
+            </div>
+        </div>
+
+        <!-- クイズ画面 -->
+        <div id="quiz-container" class="hidden card rounded-2xl p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-2">
+                <div id="progress" class="font-orbitron text-lg text-glow-secondary"></div>
+                <div id="score-display" class="font-orbitron text-lg text-glow-primary">SCORE: 0</div>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2.5 mb-4 border-2 border-yellow-400/50">
+                <div id="timer-bar" class="bg-yellow-400 h-1.5 rounded-full" style="width: 100%"></div>
+            </div>
+            <div class="bg-black/50 p-6 rounded-lg mb-6 min-h-[120px] flex items-center justify-center border-2 border-dashed border-gray-600">
+                <p id="question" class="text-2xl font-bold text-center"></p>
+            </div>
+            <div id="options" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div id="feedback" class="mt-6 p-4 rounded-lg text-center hidden min-h-[100px] flex flex-col justify-center">
+                <p id="feedback-text" class="text-6xl font-orbitron"></p>
+                <p id="explanation" class="mt-2 text-sm text-gray-300"></p>
+            </div>
+            <button id="next-button" class="w-full mt-6 bg-gray-800 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:bg-gray-900 transition hidden font-orbitron text-2xl">次なる試練へ</button>
+        </div>
+
+        <!-- 結果画面 -->
+        <div id="result-container" class="hidden card rounded-2xl p-8 shadow-2xl text-center">
+            <h2 id="result-title" class="text-7xl font-orbitron mb-4 animate-pop-in"></h2>
+            <p id="result-message" class="text-xl text-gray-300 mb-4"></p>
+            <p id="final-score" class="text-5xl font-orbitron text-glow-gold mb-8"></p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <button onclick="retryQuiz()" class="btn-difficulty border-cyan-400 text-cyan-400 font-bold py-3 px-8 rounded-lg text-xl">コンティニュー</button>
+                <button onclick="returnToHome()" class="btn-difficulty border-gray-500 text-gray-500 font-bold py-3 px-8 rounded-lg text-xl">撤退</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- サウンド関連の初期設定 ---
+        let isAudioInitialized = false;
+        let sounds = {};
+
+        function initAudio() {
+            // エフェクトの定義（重低音の鍵）
+            const distortion = new Tone.Distortion(0.6).toDestination();
+            const reverb = new Tone.Reverb({ decay: 1.5, wet: 0.4 }).toDestination();
+            const fatVibrato = new Tone.Vibrato(8, 0.2);
+
+            // 各サウンドのシンセサイザーを定義
+            sounds.start = new Tone.MembraneSynth({
+                pitchDecay: 0.01,
+                octaves: 6,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.1 }
+            }).toDestination();
+
+            sounds.click = new Tone.MembraneSynth({
+                pitchDecay: 0.05,
+                octaves: 2,
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0 }
+            }).toDestination();
+            
+            sounds.correct = {
+                kick: new Tone.MembraneSynth({
+                    pitchDecay: 0.02,
+                    octaves: 8,
+                    envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.5 }
+                }).connect(distortion),
+                synth: new Tone.FMSynth({
+                    harmonicity: 1.5,
+                    modulationIndex: 10,
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 }
+                }).connect(reverb)
+            };
+
+            sounds.incorrect = new Tone.FMSynth({
+                harmonicity: 2.5,
+                modulationIndex: 20,
+                oscillator: { type: 'square' },
+                envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.1 }
+            }).connect(distortion);
+
+            sounds.timerTick = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination();
+
+            sounds.victory = new Tone.FMSynth().connect(reverb);
+            sounds.gameOver = new Tone.FMSynth().connect(distortion);
+
+            isAudioInitialized = true;
+            console.log("Audio Initialized.");
+        }
+
+        function playSound(soundName) {
+            if (!isAudioInitialized) return;
+            
+            const now = Tone.now();
+            switch(soundName) {
+                case 'start':
+                    sounds.start.triggerAttackRelease('C1', '8n', now);
+                    break;
+                case 'click':
+                    sounds.click.triggerAttackRelease('C5', '8n', now);
+                    break;
+                case 'correct':
+                    sounds.correct.kick.triggerAttackRelease('C1', '8n', now);
+                    sounds.correct.synth.triggerAttackRelease('C5', '8n', now + 0.05);
+                    break;
+                case 'incorrect':
+                    sounds.incorrect.triggerAttackRelease('C2', '4n', now);
+                    break;
+                case 'tick':
+                    sounds.timerTick.triggerAttackRelease('G5', '32n', now);
+                    break;
+                case 'victory':
+                     new Tone.Sequence((time, note) => {
+                        sounds.victory.triggerAttackRelease(note, "16n", time);
+                    }, ["C4", "E4", "G4", "C5", ["E5", "G5"], "C6"], "8n").start(0).stop('1m');
+                    Tone.Transport.start();
+                    setTimeout(() => Tone.Transport.stop(), 1500);
+                    break;
+                case 'gameOver':
+                    new Tone.Sequence((time, note) => {
+                        sounds.gameOver.triggerAttackRelease(note, "4n", time);
+                    }, ["C4", "B3", "A#3", "A3"], "4n").start(0).stop('1m');
+                    Tone.Transport.start();
+                    setTimeout(() => Tone.Transport.stop(), 2000);
+                    break;
+            }
+        }
+
+
+        // --- クイズデータ ---
+        const questions = {
+            easy: [
+                { q: "洗顔後、化粧水をつける最も効果的なタイミングは？", o: ["完全に乾いてから", "少し湿っているうち", "10分後", "いつでも良い"], a: 1, e: "肌が少し湿っているうちに化粧水をつけると、水分が蒸発するのを防ぎ、浸透しやすくなります。" },
+                { q: "日焼け止めに表示されている「SPF」とは、主に何を防御するもの？", o: ["UVA（紫外線A波）", "UVB（紫外線B波）", "ブルーライト", "赤外線"], a: 1, e: "SPF (Sun Protection Factor) は、肌を赤くさせ、シミやそばかすの原因となるUVB（紫外線B波）を防ぐ効果の指標です。" },
+                { q: "肌のターンオーバーの正常な周期は、一般的にどのくらいと言われている？", o: ["約10日", "約28日", "約45日", "約60日"], a: 1, e: "健康な20代の肌では、ターンオーバー（肌の生まれ変わり）の周期は約28日と言われています。年齢とともに周期は長くなります。" },
+                { q: "クレンジングの主な目的は？", o: ["汗やほこりを落とす", "古い角質を取り除く", "メイクや皮脂汚れを落とす", "肌に潤いを与える"], a: 2, e: "クレンジングは、油性の汚れであるメイクアップや過剰な皮脂を浮かせて落とすことを主な目的としています。" },
+                { q: "化粧水、乳液、クリーム。一般的にどの順番で使うのが正しい？", o: ["乳液→化粧水→クリーム", "化粧水→乳液→クリーム", "クリーム→化粧水→乳液", "どれからでも良い"], a: 1, e: "一般的には、水分が多いものから油分が多いものの順に使います。化粧水で水分を補給し、乳液・クリームで油分を補い蓋をします。" },
+                { q: "ニキビができた時に、やってはいけないことは？", o: ["潰す", "保湿する", "清潔に保つ", "触らないようにする"], a: 0, e: "ニキビを無理に潰すと、炎症が悪化したり、跡が残ったりする原因になります。清潔に保ち、触らないことが大切です。" },
+                { q: "髪を乾かすとき、ドライヤーの温風を当てるべき場所は？", o: ["毛先から", "根元から", "中間から", "どこからでも同じ"], a: 1, e: "根元が最も乾きにくいため、まず根元を乾かし、その後中間から毛先へと乾かしていくのが効率的で、髪へのダメージも抑えられます。" },
+                { q: "肌の3大要素と呼ばれるものは、コラーゲン、エラスチンとあと一つは何？", o: ["セラミド", "ビタミンC", "ヒアルロン酸", "プラセンタ"], a: 2, e: "肌の真皮層に存在するコラーゲン、エラスチン、ヒアルロン酸は、肌のハリや弾力、潤いを保つための3大要素です。" },
+                { q: "ファンデーションを塗る前に使う「化粧下地」の主な役割は？", o: ["ファンデーションの色を濃くする", "肌の凹凸を整え、化粧ノリを良くする", "クレンジングを不要にする", "日焼けを防ぐことのみ"], a: 1, e: "化粧下地は、毛穴や肌の凹凸をカバーして滑らかにし、ファンデーションの密着度を高めて化粧崩れを防ぐ役割があります。" },
+                { q: "健康な爪を育てるために大切な栄養素は？", o: ["タンパク質", "糖質", "脂質", "ビタミンE"], a: 0, e: "爪はケラチンというタンパク質でできているため、良質なタンパク質の摂取が健康な爪の育成には不可欠です。" },
+                { q: "シートマスクを使う最適な時間は、一般的にどのくらい？", o: ["5分未満", "10～15分", "30分以上", "長ければ長いほど良い"], a: 1, e: "多くのシートマスクは10～15分が推奨時間です。長時間つけすぎると、逆に肌の水分がシートに奪われることがあります。" },
+                { q: "「ノンコメドジェニックテスト済み」と書かれた化粧品は、どんな人におすすめ？", o: ["乾燥肌の人", "敏感肌の人", "ニキビができやすい人", "アトピー性皮膚炎の人"], a: 2, e: "ノンコメドジェニックとは、ニキビの初期段階である「コメド」ができにくいことをテストで確認した製品のことで、ニキビができやすい人向けです。" },
+                { q: "唇が乾燥したとき、やってしまいがちなNG行動は？", o: ["リップクリームを塗る", "はちみつを塗る", "舐める", "水を飲む"], a: 2, e: "唇を舐めると、唾液が蒸発する際に唇の水分まで奪ってしまい、さらに乾燥を悪化させる原因になります。" },
+                { q: "顔のむくみが気になる朝、効果的なセルフケアは？", o: ["冷たい水で顔を洗う", "塩分の多い食事をとる", "うつ伏せで寝る", "運動を避ける"], a: 0, e: "冷たい水で顔を洗うと血管が収縮し、むくみの軽減に繋がります。マッサージや温冷ケアも効果的です。" },
+                { q: "アイシャドウを塗る際、一般的に最も濃い色を乗せる場所は？", o: ["眉下", "まぶた全体", "目頭", "目のキワ"], a: 3, e: "引き締め色である最も濃い色は、目のキワに乗せることで、目を大きくはっきりと見せる効果があります。" },
+                { q: "シャンプーをする前に行うと良いとされていることは？", o: ["髪を濡らさない", "ブラッシング", "トリートメント", "リンス"], a: 1, e: "シャンプー前にブラッシングをすることで、髪の絡まりをほどき、ホコリや汚れを浮かせてシャンプーの泡立ちを良くします。" },
+                { q: "肌が紫外線を浴びた後、メラニンが生成される主な目的は？", o: ["肌を白くするため", "肌細胞を紫外線から守るため", "肌を乾燥させるため", "ビタミンDを生成するため"], a: 1, e: "メラニンは、紫外線が肌の奥深くに侵入して細胞を傷つけるのを防ぐ、天然のサングラスのような役割を果たしています。" },
+                { q: "チークを入れると、どのような効果が期待できる？", o: ["顔を小さく見せる", "血色感を出し、健康的に見せる", "目を大きく見せる", "鼻を高く見せる"], a: 1, e: "チークは頬に血色感を与え、顔全体を明るく健康的に見せる効果があります。入れ方次第で顔の印象をコントロールできます。" },
+                { q: "スキンケア製品で「アルコールフリー」と表示されている場合、一般的にどんな利点がある？", o: ["殺菌効果が高い", "清涼感が強い", "肌への刺激が少ない", "保湿力が非常に高い"], a: 2, e: "アルコール（エタノール）は清涼感や殺菌効果がありますが、肌が敏感な人には刺激になったり、乾燥を招いたりすることがあります。アルコールフリーは低刺激な処方です。" },
+                { q: "お風呂上がりに体を拭くとき、肌に優しい方法は？", o: ["ゴシゴシと強くこする", "自然乾燥させる", "タオルで押さえるように拭く", "ドライヤーで乾かす"], a: 2, e: "肌を強くこすると摩擦でダメージを与えてしまいます。柔らかいタオルで優しく押さえるように水分を吸い取るのが正解です。" },
+                { q: "眉毛を描くとき、最初に手を付けるべきポイントは？", o: ["眉頭", "眉山", "眉尻", "全体の輪郭"], a: 1, e: "眉の形を決める上で最も重要なのが眉山です。眉山の位置を決めてから眉尻、眉頭へと描いていくとバランスが取りやすいです。" },
+                { q: "「皮脂」の主な役割として正しくないものは？", o: ["肌の水分蒸発を防ぐ", "外部の刺激から肌を守る", "肌を弱酸性に保つ", "肌のメラニンを増やす"], a: 3, e: "皮脂は天然のクリームとして肌を守る役割がありますが、メラニンの増減には直接関与しません。" },
+                { q: "睡眠不足が肌に与える最も大きな影響は？", o: ["肌が白くなる", "ターンオーバーの乱れ", "皮脂が全く出なくなる", "毛が濃くなる"], a: 1, e: "成長ホルモンが分泌される睡眠中に肌の修復は行われます。睡眠不足はターンオーバーを乱し、肌荒れの原因になります。" },
+                { q: "マスカラを落とすのに最も適しているのは？", o: ["洗顔フォーム", "化粧水", "ポイントメイクリムーバー", "乳液"], a: 2, e: "マスカラ、特にウォータープルーフタイプは専用のポイントメイクリムーバーを使うと、目に負担をかけずにきれいに落とせます。" },
+                { q: "美容によいとされるビタミンCが多く含まれる食品は？", o: ["肉", "米", "パプリカ", "牛乳"], a: 2, e: "パプリカやブロッコリー、キウイフルーツなどにはビタミンCが豊富に含まれています。ビタミンCはコラーゲンの生成を助け、抗酸化作用があります。" },
+            ],
+            normal: [
+                { q: "肌の角質層に存在し、水分を挟み込んで保持する役割を持つ細胞間脂質の主成分は？", o: ["コラーゲン", "エラスチン", "セラミド", "ヒアルロン酸"], a: 2, e: "セラミドは角質細胞の間を埋める細胞間脂質の約50%を占め、水分の蒸発を防ぐバリア機能の主役です。" },
+                { q: "ビタミンC誘導体の一種で、即効性が高いとされるものは次のうちどれ？", o: ["リン酸アスコルビルMg", "アスコルビルグルコシド", "パルミチン酸アスコルビルリン酸3Na (APPS)", "テトラヘキシルデカン酸アスコルビル"], a: 2, e: "APPSは水溶性と油溶性の両方の性質を持ち、肌への浸透性が高く、即効性があると言われています。" },
+                { q: "日焼け止めの「PA」表示が防御するのはどの紫外線？", o: ["UVA（紫外線A波）", "UVB（紫外線B波）", "UVC（紫外線C波）", "赤外線"], a: 0, e: "PA (Protection Grade of UVA) は、肌の奥深くまで届き、シワやたるみの原因となるUVAを防ぐ効果の指標です。+の数が多いほど効果が高くなります。" },
+                { q: "界面活性剤の4つのタイプのうち、クレンジングオイルや乳液の乳化に使われるのは主にどれ？", o: ["アニオン（陰イオン）", "カチオン（陽イオン）", "ノニオン（非イオン）", "両性イオン"], a: 2, e: "ノニオン（非イオン）界面活性剤は、洗浄力はマイルドですが乳化力に優れ、肌への刺激も少ないため、クレンジングや乳液、クリームなどに広く使われます。" },
+                { q: "肌の酸化（サビ）を引き起こす主な原因とされるものは？", o: ["活性酸素", "コラーゲン", "セラミド", "ペプチド"], a: 0, e: "紫外線やストレス、大気汚染などによって体内で過剰に発生した活性酸素が、細胞を傷つけ、肌の老化（酸化）を引き起こします。" },
+                { q: "「グリチルリチン酸ジカリウム」が化粧品に配合される主な目的は？", o: ["美白", "保湿", "抗炎症", "角質除去"], a: 2, e: "グリチルリチン酸ジカリウムは、漢方の原料である甘草（カンゾウ）由来の成分で、優れた抗炎症作用を持ち、肌荒れやニキビを防ぐ目的で配合されます。" },
+                { q: "肌の糖化（コゲ）とは、体内の何と何が結びつくことによって起こる現象？", o: ["タンパク質と脂質", "タンパク質と糖", "脂質とビタミン", "糖とミネラル"], a: 1, e: "糖化は、食事などから摂取した過剰な糖が体内のタンパク質と結びつき、AGEs（最終糖化産物）という老化物質を生成する現象です。肌の黄ぐすみやハリの低下の原因となります。" },
+                { q: "化粧品成分表示で、配合量の多い順に記載されるのは全成分のうち何%まで？", o: ["0.1%以上", "1%以上", "5%以上", "10%以上"], a: 1, e: "化粧品の全成分表示は、配合量の多い順に記載するのがルールですが、配合量が1%以下の成分については、順不同で記載することが認められています。" },
+                { q: "次のうち、物理的（ノンケミカル）な紫外線防御剤はどれ？", o: ["メトキシケイヒ酸エチルヘキシル", "酸化チタン", "オキシベンゾン-3", "ジエチルアミノヒドロキシベンゾイル安息香酸ヘキシル"], a: 1, e: "酸化チタンや酸化亜鉛は、肌の表面で紫外線を物理的に散乱・反射させて防ぐ「紫外線散乱剤」です。これをノンケミカル処方と呼びます。" },
+                { q: "「ブースター（導入美容液）」を使用する最も効果的なタイミングは？", o: ["スキンケアの一番最後", "洗顔後、化粧水の前", "乳液とクリームの間", "メイクの前"], a: 1, e: "ブースターは、洗顔直後の肌に使うことで、その後の化粧水や美容液の浸透を助ける役割を果たします。" },
+                { q: "肌のpHバランスについて、健康な肌は一般的にどのような状態に保たれている？", o: ["弱酸性", "中性", "弱アルカリ性", "強酸性"], a: 0, e: "健康な肌の表面は、皮脂と汗が混じり合ってできる皮脂膜によってpH4.5～6.0の弱酸性に保たれており、細菌の増殖を防いでいます。" },
+                { q: "「レチノール」が肌にもたらす主な効果として期待されるものは？", o: ["強力な保湿", "ターンオーバーの促進", "皮脂の抑制", "紫外線B波の吸収"], a: 1, e: "レチノール（ビタミンAの一種）は、肌のターンオーバーを促進し、ヒアルロン酸やコラーゲンの生成をサポートすることで、シワやハリの改善が期待されます。" },
+                { q: "「トラネキサム酸」が医薬部外品の有効成分として認められている主な効果は？", o: ["シワ改善", "保湿", "肌荒れ防止・美白", "ニキビ予防"], a: 2, e: "トラネキサム酸は、メラニンの生成を抑える働きと抗炎症作用があり、美白と肌荒れ防止の両方で有効成分として承認されています。" },
+                { q: "ファンデーションの種類で、カバー力が最も高いとされるのは一般的にどれ？", o: ["パウダーファンデーション", "リキッドファンデーション", "クリームファンデーション", "クッションファンデーション"], a: 2, e: "一般的に、油分が多くこっくりとしたテクスチャーのクリームファンデーションが、最もカバー力が高いとされています。" },
+                { q: "「ブルーライト」が肌に与える影響として、近年注目されているものは？", o: ["肌の乾燥", "色素沈着", "皮脂の増加", "角質の軟化"], a: 1, e: "PCやスマホから発せられるブルーライトは、紫外線A波（UVA）に似た性質を持ち、長時間浴びることで肌の奥深くに到達し、色素沈着を引き起こす可能性が指摘されています。" },
+                { q: "「オーガニックコスメ」と名乗るための、日本における明確な法的基準は？", o: ["JAS法で定められている", "薬機法で定められている", "特に法的な基準はない", "化粧品公正取引協議会が定めている"], a: 2, e: "日本では「オーガニックコスメ」や「自然派化粧品」を定義する法的な基準はありません。各メーカーや認証団体の自主基準に委ねられています。" },
+                { q: "髪のキューティクルが傷む主な原因として正しくないものは？", o: ["濡れたままの放置", "紫外線", "過度なブラッシング", "酸性のトリートメント"], a: 3, e: "キューティクルはアルカリ性に傾くと開き、酸性に傾くと引き締まる性質があります。酸性のトリートメントはキューティクルを整える効果があります。" },
+                { q: "「ナイアシンアミド」に期待される効果として、近年シワ改善と共に認められたものは？", o: ["保湿", "美白", "抗酸化", "角質除去"], a: 1, e: "ナイアシンアミド（ビタミンB3の一種）は、シワ改善効果に加えて、メラニンの生成を抑え、シミ・そばかすを防ぐ美白効果も認められているマルチな成分です。" },
+                { q: "化粧品における「パラベン」の主な使用目的は？", o: ["保湿剤", "乳化剤", "防腐剤", "香料"], a: 2, e: "パラベン（パラオキシ安息香酸エステル）は、微生物の繁殖を防ぎ、化粧品の品質を保つために広く使用される防腐剤の一種です。" },
+                { q: "肌のバリア機能において重要な役割を果たす角質層の3つの因子は、皮脂膜、NMF（天然保湿因子）とあと一つは何？", o: ["コラーゲン", "エラスチン", "細胞間脂質", "基底膜"], a: 2, e: "角質層のバリア機能は、①皮脂膜、②NMF（天然保湿因子）、③細胞間脂質（セラミドなど）の3つがバランスよく働くことで保たれています。" },
+                { q: "「サリチル酸」が配合されたスキンケア製品に期待される主な効果は？", o: ["保湿", "角質軟化・除去", "コラーゲン生成促進", "血行促進"], a: 1, e: "サリチル酸はBHA（ベータヒドロキシ酸）の一種で、硬くなった角質を柔らかくして剥がれやすくする作用や、毛穴の詰まりを解消する効果があります。" },
+                { q: "化粧品で「オイルフリー」と表示する場合、一般的に何を含まない処方を指す？", o: ["シリコーンオイル", "界面活性剤", "鉱物油・動植物油・合成エステル油など", "アルコール"], a: 2, e: "「オイルフリー」は一般的に、鉱物油（ミネラルオイル）、動植物油、合成エステル油などの「油性成分」を含まない処方を指します。ただし、シリコーンオイルを含む場合もあるなど、メーカーによって定義が異なります。" },
+                { q: "香水の香りの変化で、つけてから最初に香るトップノートの持続時間はどのくらい？", o: ["約5～30分", "約30分～2時間", "約2～5時間", "約5時間以上"], a: 0, e: "トップノートは揮発性の高い香料で構成され、香水の第一印象を決めます。持続時間は5～30分程度と短いです。" },
+                { q: "肌の常在菌のうち、いわゆる「善玉菌」として知られ、肌を弱酸性に保つ働きがあるのは？", o: ["アクネ菌", "黄色ブドウ球菌", "表皮ブドウ球菌", "マラセチア菌"], a: 2, e: "表皮ブドウ球菌は、皮脂や汗を分解してグリセリン（保湿成分）や脂肪酸（肌を弱酸性に保つ）を作り出す、美肌に欠かせない善玉菌です。" },
+                { q: "「フラーレン」という美容成分に期待される最も特徴的な効果は？", o: ["強力な抗酸化力", "強力な保湿力", "強力な美白力", "強力なピーリング効果"], a: 0, e: "フラーレンは、ビタミンCの100倍以上とも言われる非常に高い抗酸化力を持ち、長時間持続することが特徴です。肌老化の原因となる活性酸素を無害化します。" },
+            ],
+            hard: [
+                { q: "レチノイド反応（A反応）の主な症状として「正しくない」ものは？", o: ["赤み、皮むけ", "乾燥、かゆみ", "一時的なニキビの悪化", "色素沈着の改善"], a: 3, e: "レチノイド反応は、ビタミンAが不足している肌に補給した際に、ターンオーバーが急激に促進されることで起こる一時的な副反応です。色素沈着の改善は効果であり、副反応ではありません。" },
+                { q: "化粧品に配合される「ヒト幹細胞培養液」とは、具体的に何を指す？", o: ["幹細胞そのもの", "幹細胞を培養した際の上清液", "幹細胞の核", "人工的に合成した幹細胞"], a: 1, e: "化粧品には幹細胞そのものを配合することはできず、幹細胞を培養した際に得られる、成長因子やサイトカインなどを豊富に含んだ培養上清液が使用されます。" },
+                { q: "日本化粧品検定（コスメ検定）1級の合格率は、およそどのくらい？", o: ["約90%", "約70%", "約50%", "約30%"], a: 1, e: "日本化粧品検定1級の合格率は例年60～70%台で推移しており、しっかり勉強すれば合格可能なレベルです。" },
+                { q: "薬機法において「化粧品」の定義として、人体に対する作用が「〇〇」であることが定められている。〇〇に入る言葉は？", o: ["顕著でない", "緩和な", "持続的な", "根本的な"], a: 1, e: "化粧品の定義は「人の身体を清潔にし、美化し、魅力を増し、容貌を変え、又は皮膚若しくは毛髪を健やかに保つために、身体に塗擦、散布その他これらに類似する方法で使用されることが目的とされている物で、人体に対する作用が緩和なもの」とされています。" },
+                { q: "紫外線（UV）のうち、波長が最も短く、オゾン層で吸収されて地表にはほとんど到達しないのは？", o: ["UVA", "UVB", "UVC", "UVD"], a: 2, e: "UVCは波長が100～280nmと最も短く、殺菌作用が強いですが、大気中のオゾン層などに吸収されるため、通常は地表に届きません。" },
+                { q: "皮膚の構造で、表皮と真皮の間に存在し、両者を繋ぎとめる役割を持つ薄い膜を何という？", o: ["角質層", "顆粒層", "基底膜", "皮下組織"], a: 2, e: "基底膜は、表皮の最も下にある基底層と、その下の真皮を繋ぎとめる重要な役割を担っています。ここが損傷すると深いシワの原因になります。" },
+                { q: "アミノ酸系の洗浄成分である「ココイルグルタミン酸TEA」。この成分の特徴として正しいものは？", o: ["洗浄力が非常に強い", "アルカリ性である", "洗い上がりがしっとりする", "泡立ちが非常に悪い"], a: 2, e: "ココイルグルタミン酸TEAは、アミノ酸由来の低刺激な洗浄成分で、適度な洗浄力を持ちながら、コンディショニング効果が高く、しっとりとした洗い上がりが特徴です。" },
+                { q: "次のうち、油溶性のビタミンはどれ？", o: ["ビタミンB1", "ビタミンC", "ナイアシン（ビタミンB3）", "ビタミンE（トコフェロール）"], a: 3, e: "ビタミンには水溶性と脂溶性があり、A, D, E, Kが脂溶性ビタミンです。脂溶性ビタミンは油に溶けやすく、体内に蓄積されやすい性質があります。" },
+                { q: "化粧品に利用される「環状シロキサン（シクロペンタシロキサンなど）」の主な特徴は？", o: ["水に非常によく溶ける", "揮発性が高く、サラサラした感触を与える", "保湿力が非常に高い", "天然由来の成分である"], a: 1, e: "環状シロキサンは揮発性のあるシリコーンオイルで、ベタつかずサラサラとした軽い感触を与えるため、日焼け止めやヘアオイルなどに使用されます。" },
+                { q: "肌の色を構成する3つの要素は、メラニン、ヘモグロビンとあと一つは何？", o: ["カロテノイド", "コラーゲン", "リコピン", "エラスチン"], a: 0, e: "肌の色は、主に①メラニン（褐色）、②ヘモグロビン（赤色）、③カロテノイド（黄色）の3つの色素の量やバランスによって決まります。" },
+                { q: "「医薬部外品（薬用化粧品）」の広告で「治る」という表現が使えない理由は？", o: ["効果が弱いため", "医師の処方が必要ないため", "薬機法で効果の範囲が定められているため", "消費者の誤解を招くため"], a: 2, e: "医薬部外品は「防止・衛生」を目的とし、認められた効能・効果の範囲内での広告しかできません。「治療」を目的とする「医薬品」と区別するため、「治る」といった表現は使えません。" },
+                { q: "皮膚の付属器官に「含まれない」ものは次のうちどれ？", o: ["毛", "汗腺", "皮脂腺", "血管"], a: 3, e: "皮膚の付属器官は、表皮が変化してできたもので、毛、爪、汗腺、皮脂腺を指します。血管は真皮や皮下組織に存在しますが、付属器官には分類されません。" },
+                { q: "肌の弾力に関わる真皮のコラーゲンのうち、約70%を占めるのはどのタイプ？", o: ["Ⅰ型コラーゲン", "Ⅱ型コラーゲン", "Ⅲ型コラーゲン", "Ⅳ型コラーゲン"], a: 0, e: "Ⅰ型コラーゲンは皮膚や骨に最も多く存在するコラーゲンで、肌のハリや弾力を支える強靭な線維を形成しています。" },
+                { q: "化粧品基準で、防腐剤として配合できる「フェノキシエタノール」の配合上限濃度は？", o: ["0.1%", "0.5%", "1.0%", "3.0%"], a: 2, e: "フェノキシエタノールは、化粧品基準によって配合上限が1.0%と定められている代表的な防腐剤です。" },
+                { q: "ランゲルハンス細胞が主に存在するのは、表皮のどの層？", o: ["角質層", "顆粒層", "有棘層", "基底層"], a: 2, e: "ランゲルハンス細胞は、表皮の有棘層に主に存在し、外部から侵入した異物を認識して免疫系に伝える、肌の免疫機能を担う重要な細胞です。" },
+                { q: "「カルボマー」が化粧品に配合される主な目的は？", o: ["洗浄", "防腐", "増粘（粘度調整）", "紫外線防御"], a: 2, e: "カルボマーは、水分を抱え込んでジェル状にする高分子ポリマーで、美容液やジェルクリームなどのとろみをつけるための増粘剤として広く使用されます。" },
+                { q: "肌の老化の要因のうち、加齢による自然な老化を何と呼ぶ？", o: ["光老化", "糖化老化", "酸化老化", "内因性老化"], a: 3, e: "内因性老化は加齢に伴う生理的な機能低下による老化で、避けることはできません。一方、紫外線による光老化は予防が可能です。" },
+                { q: "化粧品の安定性を評価する試験のうち、高温条件下での品質変化を確認する試験は？", o: ["サイクル試験", "遠心分離試験", "加速試験", "光安定性試験"], a: 2, e: "加速試験は、製品を高温（例：40℃）で数ヶ月間保存し、常温で長期間保存した場合の品質を予測するための試験です。" },
+                { q: "表皮細胞（ケラチノサイト）が生まれてから垢として剥がれ落ちるまでの全プロセスを何と呼ぶ？", o: ["角化（ケラチニゼーション）", "糖化（グリケーション）", "酸化（オキシデーション）", "乳化（エマルシフィケーション）"], a: 0, e: "角化（ケラチニゼーション）は、表皮の基底層で生まれた細胞が分化しながら上層へ移動し、最終的に角質細胞となって剥がれ落ちる一連のプロセスを指します。" },
+                { q: "「ヘパリン類似物質」が持つ主な3つの作用として「正しくない」ものは？", o: ["保湿", "血行促進", "抗炎症", "美白"], a: 3, e: "医療用医薬品にも使われるヘパリン類似物質は、高い保湿作用、血行促進作用、抗炎症作用を持ちますが、直接的な美白効果は認められていません。" },
+                { q: "化粧品の全成分表示で「水」の次に「BG」と記載がある場合、このBGの正式名称は？", o: ["ブタンジオール", "ブチレングリコール", "ベンジルグリコール", "ブチルグルコシド"], a: 1, e: "BGはブチレングリコールの略称で、多価アルコールの一種です。高い保湿効果と適度な抗菌性があり、多くの化粧品で保湿剤や溶剤として使用されます。" },
+                { q: "日本の薬機法上、石けんは「化粧品」ではなく何に分類される？", o: ["医薬品", "医薬部外品", "雑貨", "化粧石けんとして独自の分類"], a: 3, e: "薬用石けん（医薬部外品）を除き、一般的な石けんは「化粧石けん」として化粧品のカテゴリーに含まれます。ただし、台所用などの石けんは雑貨となります。（※この問題は少しトリッキーですが、一般的に顔や身体を洗う石けんは化粧品扱いです）" },
+                { q: "SPF値の測定方法は国際的に標準化されている。その際の紫外線照射量は1平方センチメートルあたり何ジュール？", o: ["MED（最小紅斑線量）を基準とする", "10ジュール", "20ジュール", "50ジュール"], a: 0, e: "SPF値は、日焼け止めを塗布した皮膚と塗布しない皮膚に紫外線を照射し、翌日に赤み（紅斑）が生じる最小の紫外線量（MED）が何倍になるかで測定されます。" },
+                { q: "真皮の線維芽細胞が産生するものではないのは、次のうちどれ？", o: ["コラーゲン", "エラスチン", "ヒアルロン酸", "セラミド"], a: 3, e: "セラミドは、表皮の角質層で角質細胞間を埋める細胞間脂質の主成分であり、表皮細胞によって産生されます。線維芽細胞は真皮の成分を産生します。" },
+                { q: "化粧品に使用される顔料のうち、「有機合成色素」をレーキ化したものを何と呼ぶ？", o: ["タール色素", "天然色素", "無機顔料", "体質顔料"], a: 0, e: "タール色素は、有機合成色素とそのレーキ（水に不溶化させたもの）を指し、鮮やかな発色が特徴で、口紅やチークなどのメイクアップ製品に広く使用されます。" },
+            ],
+            professional: [
+                { q: "2001年の薬事法改正まで、化粧品の成分表示はどのように定められていた？", o: ["全成分表示が義務", "主要成分のみ表示", "表示義務はなかった", "指定成分のみ表示"], a: 3, e: "2001年3月までは、アレルギーなどを引き起こす可能性のある102種類の「表示指定成分」のみを表示する義務がありました。4月から全成分表示が義務化されました。" },
+                { q: "化粧品に配合される防腐剤「パラオキシ安息香酸エステル（パラベン）」。その合計配合上限濃度は？", o: ["0.5%", "1.0%", "1.5%", "2.0%"], a: 1, e: "パラベン類は、1種類または複数を合わせて合計1.0%までしか配合できないと化粧品基準で定められています。" },
+                { q: "皮膚の最外層である角質層の厚さは、平均でどのくらい？", o: ["約0.02mm", "約0.2mm", "約0.5mm", "約1.0mm"], a: 0, e: "角質層は非常に薄く、平均で約0.02mmしかありません。これは食品用ラップフィルム1枚程度の厚さです。" },
+                { q: "「石けん」が洗浄力を発揮するメカニズムは、多数の界面活性剤分子が集まって形成する何という構造によるもの？", o: ["リポソーム", "ミセル", "ベシクル", "エマルション"], a: 1, e: "一定濃度以上になると、界面活性剤分子は水中で親水基を外側に、疎水基（親油基）を内側に向けて集まり、球状のミセルを形成します。このミセルの内側に油汚れを取り込んで洗浄します。" },
+                { q: "日本において、化粧品の広告で効能効果を標榜する場合、どこが定めた56の範囲内に限定されている？", o: ["厚生労働省", "消費者庁", "日本化粧品工業連合会", "公正取引委員会"], a: 0, e: "化粧品で標榜できる効能効果の範囲は、1999年の厚生労働省医薬安全局長通知によって55項目が定められ、その後1項目追加され、現在は56項目となっています。" },
+                { q: "ファンデーションの色選びで重要となる「イエローベース」「ブルーベース」。これは、皮膚の何の色みの違いによる分類？", o: ["メラニンの種類（ユーメラニン/フェオメラニン）", "ヘモグロビンの量", "皮下脂肪の厚さ", "アンダートーン（基調となる色）"], a: 3, e: "パーソナルカラーにおけるベースカラーは、肌表面の色ではなく、その下にあるアンダートーン（基調色）が黄み寄りか青み寄りかによって分類されます。" },
+                { q: "「シクロデキストリン」が化粧品に配合される際の、包接機能（クラウディング）以外の目的は？", o: ["香料の安定化・可溶化", "防腐効果の向上", "乳化力の増強", "紫外線散乱効果"], a: 0, e: "シクロデキストリンは、そのカプセル状の構造で不安定な成分や香料を包み込んで安定させたり、水に溶けにくい成分を可溶化したりする目的で使われます。" },
+                { q: "化粧品の製造販売を行うために必要な許可は？", o: ["化粧品製造業許可", "化粧品販売業許可", "化粧品製造販売業許可", "化粧品輸入販売業許可"], a: 2, e: "製品の品質や安全性について最終的な責任を負い、市場に出荷するためには「化粧品製造販売業許可」が必要です。「製造業許可」は製造行為のみを行う許可です。" },
+                { q: "表皮を構成する細胞の約95%を占めるのは？", o: ["メラノサイト（色素細胞）", "ランゲルハンス細胞", "ケラチノサイト（角化細胞）", "メルケル細胞"], a: 2, e: "表皮の大部分（約95%）は、角化を通じて皮膚のバリア機能を形成するケラチノサイト（表皮角化細胞）で構成されています。" },
+                { q: "医薬部外品の有効成分として「ビタミンCエチル（3-O-エチルアスコルビン酸）」が持つ、他のビタミンC誘導体にはない特徴は？", o: ["水溶性である", "油溶性である", "酵素反応なしでビタミンCとして働く", "熱に非常に強い"], a: 2, e: "ビタミンCエチルは、他の多くの誘導体と異なり、皮膚内の酵素による分解を経ずに、そのままの形でビタミンCとして作用できる即効性と持続性を兼ね備えた成分です。" },
+                { q: "化粧品に配合される「PEG-60水添ヒマシ油」。この成分の分類として最も適切なものは？", o: ["油性成分", "保湿剤", "非イオン界面活性剤", "防腐剤"], a: 2, e: "これはポリエチレングリコール（PEG）を付加した非イオン（ノニオン）界面活性剤で、水に溶けにくい油性成分や香料などを可溶化するために用いられます。" },
+                { q: "「特定商取引法」において、誇大広告等が禁止されているが、化粧品広告はさらにどの法律の規制も受ける？", o: ["景品表示法", "独占禁止法", "製造物責任法（PL法）", "消費者契約法"], a: 0, e: "化粧品広告は、薬機法に加え、不当な顧客誘引を防ぎ、消費者の自主的かつ合理的な選択を阻害するおそれのある表示を禁じる「景品表示法」の規制も受けます。" },
+                { q: "皮膚の感覚点のうち、最も数が多いとされるのは？", o: ["触点（マイスナー小体）", "圧点（パチニ小体）", "温点", "痛点"], a: 3, e: "痛点は特定の受容器を持たず、自由神経終末が刺激を感知します。皮膚全体に最も密に分布しており、身体の危険を知らせる重要な役割を担っています。" },
+                { q: "「カーマイン」という赤色色素の原料は？", o: ["石油（タール）", "ベニバナ", "エンジムシ（カイガラムシの一種）", "酸化鉄"], a: 2, e: "カーマイン（コチニール色素）は、エンジムシという昆虫から抽出される動物由来の天然色素で、鮮やかな赤色を呈します。" },
+                { q: "化粧品の容器に記載が義務付けられている「製造販売業者」の役割は？", o: ["製品の製造", "製品の保管", "製品の品質保証と安全管理責任", "製品の輸送"], a: 2, e: "製造販売業者は、製品の処方や表示内容を決定し、品質や安全性に関する全ての責任を負う、いわばその製品の発売元です。" },
+                { q: "「マイクロニードル技術」を応用したパッチ化粧品。その主な目的は？", o: ["角質層のピーリング", "皮脂の吸着", "有効成分の角質層への直接注入", "肌表面の殺菌"], a: 2, e: "マイクロニードルは、ヒアルロン酸などの美容成分でできた微細な針を皮膚に刺すことで、角質層を通過させて有効成分を直接内部に届ける技術です。" },
+                { q: "日本の水道水の水質基準において、pH値の基準範囲は？", o: ["4.5～6.0", "5.8～8.6", "6.5～7.5", "7.0～9.0"], a: 1, e: "日本の水道水は、水道法に基づく水質基準により、pH 5.8以上8.6以下と定められており、概ね中性です。" },
+                { q: "「リポソーム技術」が化粧品に応用される最大のメリットは？", o: ["成分の安定化と浸透性の向上", "製品の粘度を上げること", "強い殺菌効果", "紫外線散乱効果"], a: 0, e: "リポソームは、リン脂質でできたナノサイズのカプセルで、水溶性・油溶性問わず成分を内包できます。成分を安定させ、角質層の奥まで効率的に届けることができます。" },
+                { q: "皮膚の常在菌叢（スキンフローラ）のバランスが崩れることを何と呼ぶ？", o: ["ケラトーシス", "ディスビオーシス", "アポトーシス", "ホメオスタシス"], a: 1, e: "ディスビオーシスは、腸内フローラだけでなく、皮膚常在菌叢においても、善玉菌・悪玉菌・日和見菌のバランスが崩れた状態を指し、様々な肌トラブルの原因となります。" },
+                { q: "化粧品の成分表示で「(アクリレーツ/アクリル酸アルキル(C10-30))クロスポリマー」のような表記。この成分の主な役割は？", o: ["乳化剤", "増粘・ゲル化剤", "皮膜形成剤", "紫外線吸収剤"], a: 1, e: "これはカルボマーと同様の増粘剤で、少量で高い増粘効果を発揮し、耐塩性にも優れているため、さっぱりしつつもとろみのあるテクスチャーを作るのに用いられます。" },
+                { q: "「ISO 22716」とは、何に関する国際規格？", o: ["化粧品の動物実験代替法", "化粧品のオーガニック認証", "化粧品GMP（適正製造規範）", "化粧品のナノマテリアル安全性評価"], a: 2, e: "ISO 22716は、化粧品の製造および品質管理に関する国際的なガイドラインである「化粧品GMP（Good Manufacturing Practices）」の規格です。" },
+                { q: "真皮にある血管は、主にどのような役割を担っている？", o: ["表皮への栄養供給と体温調節", "紫外線の吸収", "皮脂の分泌", "水分の保持"], a: 0, e: "血管のない表皮へ栄養や酸素を届け、老廃物を回収するのが真皮の毛細血管の役割です。また、血管の拡張・収縮により皮膚の温度を調節します。" },
+                { q: "化粧品開発における「in vitro試験」とは何を指す？", o: ["動物を用いる試験", "ヒトを対象とする試験", "試験管内や培養細胞を用いる試験", "コンピュータシミュレーションによる試験"], a: 2, e: "in vitro（イン・ビトロ）は「試験管内で」を意味し、培養した皮膚細胞などを用いて、成分の有効性や安全性を評価する試験法です。動物実験の代替法として重要です。" },
+                { q: "「薬用炭」が洗顔料やクレンジングに配合される主な目的は？", o: ["保湿", "美白", "皮脂や毛穴汚れの吸着", "殺菌"], a: 2, e: "薬用炭は、無数の微細な孔（あな）を持つ多孔質構造が特徴で、その吸着力を利用して、余分な皮脂や毛穴の奥の汚れをキャッチする目的で配合されます。" },
+                { q: "化粧品に配合される「EGF（ヒトオリゴペプチド-1）」。このEGFが働きかける主な受容体はどこに存在するか？", o: ["真皮の線維芽細胞", "表皮の基底層にある細胞", "皮脂腺", "角質層"], a: 1, e: "EGF（上皮細胞成長因子）は、表皮の基底層にある細胞のEGF受容体に結合し、細胞分裂を促進してターンオーバーを整える働きがあります。" },
+            ]
+        };
+
+        // --- Game State & Config ---
+        let currentDifficulty = '';
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswers = 0;
+        const questionsPerRound = 10;
+        const clearScore = 7;
+        const timePerQuestion = 15; // 15 seconds
+        let timerInterval;
+        let timeLeft;
+
+        // --- DOM Elements ---
+        const mainContainer = document.getElementById('main-container');
+        const difficultySelectionDiv = document.getElementById('difficulty-selection');
+        const quizContainerDiv = document.getElementById('quiz-container');
+        const resultContainerDiv = document.getElementById('result-container');
+        const questionP = document.getElementById('question');
+        const optionsDiv = document.getElementById('options');
+        const progressDiv = document.getElementById('progress');
+        const scoreDisplayDiv = document.getElementById('score-display');
+        const feedbackDiv = document.getElementById('feedback');
+        const feedbackTextP = document.getElementById('feedback-text');
+        const explanationP = document.getElementById('explanation');
+        const nextButton = document.getElementById('next-button');
+        const timerBar = document.getElementById('timer-bar');
+
+        // --- Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        async function startGame(difficulty) {
+            // 最初のユーザーインタラクションでオーディオを初期化
+            if (!isAudioInitialized) {
+                await Tone.start();
+                initAudio();
+            }
+            playSound('start');
+
+            currentDifficulty = difficulty;
+            currentQuestionIndex = 0;
+            score = 0;
+            correctAnswers = 0;
+            
+            const allQuestions = questions[difficulty];
+            currentQuestions = shuffleArray([...allQuestions]).slice(0, questionsPerRound);
+
+            difficultySelectionDiv.classList.add('hidden');
+            resultContainerDiv.classList.add('hidden');
+            quizContainerDiv.classList.remove('hidden');
+            quizContainerDiv.classList.add('animate-fade-in');
+
+            displayQuestion();
+        }
+
+        function displayQuestion() {
+            clearInterval(timerInterval);
+            feedbackDiv.classList.add('hidden');
+            nextButton.classList.add('hidden');
+            optionsDiv.classList.remove('disabled');
+            mainContainer.classList.remove('animate-shake');
+
+            const q = currentQuestions[currentQuestionIndex];
+            questionP.textContent = '';
+            questionP.classList.remove('animate-pop-in');
+            
+            setTimeout(() => {
+                questionP.textContent = `Q${currentQuestionIndex + 1}: ${q.q}`;
+                questionP.classList.add('animate-pop-in');
+            }, 100);
+
+            progressDiv.textContent = `QUESTION ${currentQuestionIndex + 1} / ${questionsPerRound}`;
+            updateScoreDisplay();
+            
+            optionsDiv.innerHTML = '';
+            q.o.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.innerHTML = `<span class="font-orbitron">${['A', 'B', 'C', 'D'][index]}</span>. ${option}`;
+                button.classList.add('btn-answer', 'w-full', 'p-4', 'rounded-lg', 'text-left', 'text-lg');
+                button.onclick = () => checkAnswer(index);
+                optionsDiv.appendChild(button);
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            timeLeft = timePerQuestion;
+            timerBar.style.transition = 'none';
+            timerBar.style.width = '100%';
+            timerBar.style.backgroundColor = '#facc15';
+            
+            setTimeout(() => {
+                timerBar.style.transition = `width ${timePerQuestion}s linear`;
+                timerBar.style.width = '0%';
+            }, 100);
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft < 5 && timeLeft > 0) {
+                    playSound('tick');
+                }
+                if (timeLeft < 5) {
+                    timerBar.style.backgroundColor = '#f87171';
+                }
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    checkAnswer(null);
+                }
+            }, 1000);
+        }
+
+        function checkAnswer(selectedIndex) {
+            clearInterval(timerInterval);
+            timerBar.style.transition = 'none';
+            optionsDiv.classList.add('disabled');
+            playSound('click');
+
+            const q = currentQuestions[currentQuestionIndex];
+            const isCorrect = selectedIndex === q.a;
+            
+            const optionButtons = optionsDiv.getElementsByTagName('button');
+
+            if (isCorrect) {
+                correctAnswers++;
+                score += 100 * (timeLeft > 0 ? timeLeft : 1);
+                feedbackTextP.textContent = "CRITICAL HIT!!";
+                feedbackTextP.className = 'text-6xl font-orbitron text-glow-correct animate-pop-in';
+                optionButtons[selectedIndex].classList.add('correct');
+                mainContainer.classList.add('animate-shake');
+                launchConfetti();
+                playSound('correct');
+            } else {
+                feedbackTextP.textContent = "FAILED...";
+                feedbackTextP.className = 'text-6xl font-orbitron text-glow-incorrect animate-pop-in';
+                if(selectedIndex !== null) {
+                    optionButtons[selectedIndex].classList.add('incorrect');
+                }
+                optionButtons[q.a].classList.add('correct');
+                playSound('incorrect');
+            }
+
+            explanationP.textContent = `解説：${q.e}`;
+            feedbackDiv.classList.remove('hidden');
+            feedbackDiv.classList.add('animate-fade-in');
+            nextButton.classList.remove('hidden');
+            updateScoreDisplay();
+        }
+        
+        function updateScoreDisplay() {
+            scoreDisplayDiv.textContent = `SCORE: ${score}`;
+        }
+
+        nextButton.onclick = () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questionsPerRound) {
+                displayQuestion();
+            } else {
+                showResult();
+            }
+        };
+
+        function showResult() {
+            quizContainerDiv.classList.add('hidden');
+            resultContainerDiv.classList.remove('hidden');
+
+            const resultTitle = document.getElementById('result-title');
+            const resultMessage = document.getElementById('result-message');
+            const finalScore = document.getElementById('final-score');
+
+            finalScore.textContent = `FINAL SCORE: ${score}`;
+
+            if (correctAnswers >= clearScore) { 
+                resultTitle.textContent = "VICTORY!!";
+                resultTitle.classList.add('text-glow-gold');
+                resultMessage.textContent = "あなたは美の頂点に立った。伝説の誕生である。";
+                launchConfetti(200);
+                playSound('victory');
+            } else {
+                resultTitle.textContent = "GAME OVER";
+                resultTitle.classList.add('text-glow-incorrect');
+                resultMessage.textContent = "知識の深淵に呑まれた...。だが、敗北こそが次なる勝利の糧となる。";
+                playSound('gameOver');
+            }
+        }
+
+        function retryQuiz() {
+            startGame(currentDifficulty);
+        }
+
+        function returnToHome() {
+            resultContainerDiv.classList.add('hidden');
+            difficultySelectionDiv.classList.remove('hidden');
+            difficultySelectionDiv.classList.add('animate-fade-in');
+        }
+        
+        // Confetti effect
+        function launchConfetti(count = 100) {
+            const container = document.getElementById('confetti-container');
+            for (let i = 0; i < count; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti-piece');
+                const x = Math.random() * 100 + 'vw';
+                const animDuration = Math.random() * 3 + 2 + 's';
+                const color = Math.random() > 0.5 ? 'var(--primary-glow)' : 'var(--secondary-glow)';
+                
+                confetti.style.left = x;
+                confetti.style.background = color;
+                confetti.style.animation = `fall ${animDuration} linear forwards`;
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                container.appendChild(confetti);
+
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes fall {
+                0% { top: -5vh; opacity: 1; }
+                100% { top: 105vh; opacity: 1; }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+    </script>
+</body>
+</html>
